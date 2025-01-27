@@ -40,13 +40,13 @@
 // });
 
 const express=require("express");
-const mongoose=require("mongoose")
+const mongoose=require("mongoose");
 const app=express();
-const port=5500;
+const port=3500;
 
 
 
-const mongoUrl="mongodb://localhost:27017"
+const mongoUrl="mongodb+srv://vishali:visha26@cluster0.xtn7uvc.mongodb.net/Expense-Tracker";
 mongoose.connect(mongoUrl)
 .then(()=>{
     console.log("Database Connected Successfully")
@@ -54,46 +54,49 @@ mongoose.connect(mongoUrl)
         console.log(`Server is running at port ${port}`)
     })
 })
-.catch((err)=>console.log(err))
+.catch((err)=>{
+    console.log(err);
+})
 
 const expenseSchema=new mongoose.Schema({
     id:{type:String,required:true,unique:true},
     title:{type:String,required:true},
-    amount:{type:Number,rrequired:true},
+    amount:{type:Number,rrequired:true}
 });
 
-const expenseModel=mongoose.model("expense-tracker",expenseSchema)
+const expenseModel=mongoose.model("expense-trackers",expenseSchema);
 
 app.get("/api/expenses/:id",async(req,res)=>{
     try{
         const{id}=req.params;
-        const expense = await expenseModel.findOne({id});
-        if(!expense){
+        const expenses = await expenseModel.findOne({id});
+        if(!expenses){
             return res.status(404).json({message:"Expense not found"})
         }
-        res.status(200).json(expense);
+        res.status(200).json(expenses);
     }catch(error){
         res.status(500).json({message:"Error in fetching Expenses"});
     }
 });
+
+app.use(express.json());
 const{v4:uuidv4}=require("uuid");
 app.post("/api/expenses",async(req,res)=>{
-    let body="";
-   // const{title,amount}=req.body;
-   req.on("data",(chunk)=>{
-    body+=chunk;//collect request data
-   
-});
-req.on("end",async()=>{
-    const data = JSON.parse(body);//parse data
-    const newExpense=new expenseModel({
-        id:uuidv4(),
-        title:data.title,
-        amount:data.amount,
+    try{
+        const data=req.body;
+    
+    
+        const newExpense=new expenseModel({
+          id:uuidv4(),
+          title:data.title,
+          amount:data.amount,
     });
     const savedExpense=await newExpense.save();//save to database
     res.status(200).json(savedExpense);//send response
-});
+  }catch(error){
+    console.error(error);
+    res.status(500).json({message:"Error saving expense",error:error.message});
+  }
 });
 
 app.use(express.json);
@@ -114,5 +117,25 @@ app.put("/api/expenses/:id", async (req,res)=>{
     
 catch(error){
         res.status(500).json({message:"Error in updating expense"});
+    }
+});
+
+app.use(express.json());
+
+app.delete('/api/expenses/:title', async (req, res) => {
+    
+    const { title } = req.body;
+
+    try {
+        const deletedExpense = await expenseModel.findOneAndDelete({ title });
+
+        if (!deletedExpense) {
+            return res.status(404).json({ message: "Expense not found" });
+        }
+
+        res.status(200).json({ message: "Expense deleted successfully", deletedExpense });
+    } catch (error) {
+        console.error(error); 
+        res.status(500).json({ message: "Error deleting expense", error: error.message });
     }
 });
